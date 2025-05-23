@@ -127,7 +127,7 @@ class YoloDetector(Node):
         for _, text, _ in readings:
             text.replace("0", "O")
             self.get_logger().info(f"Sign reads: {text}")
-            if text.upper() == "STOP":
+            if "STOP" in text.upper():
                 stop_found = True
                 break
         return stop_found
