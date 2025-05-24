@@ -21,7 +21,7 @@ def detect():
             {'coco_model_path': LaunchConfiguration("coco_model_path")},
             {'tire_model_path': LaunchConfiguration("tire_model_path")},
             {'flip_image': False},
-            {'image_resize': 640},
+            {'image_resize': 0},
         ],
     )
 

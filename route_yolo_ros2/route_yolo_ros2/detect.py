@@ -51,7 +51,8 @@ class YoloDetector(Node):
             return
 
         resize_val = self.get_parameter('image_resize').get_parameter_value().integer_value
-        img = self.letterbox_resize(img, (resize_val, resize_val))
+        if resize_val > 0:
+            img = self.letterbox_resize(img, (resize_val, resize_val))
 
         if self.get_parameter('flip_image').get_parameter_value().bool_value:
             img = cv2.flip(img, 0)
