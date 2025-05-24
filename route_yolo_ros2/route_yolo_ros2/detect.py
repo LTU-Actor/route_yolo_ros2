@@ -93,7 +93,7 @@ class YoloDetector(Node):
             'tire': 0,
         }
 
-        results = yolo.predict(source=im, device="0", stream=False, verbose=False, conf=0.5, classes=[target_ids[mode]], show=True)
+        results = yolo.predict(source=im, device="0", stream=False, verbose=False, conf=0.5, classes=[target_ids[mode]], show=False)
 
         count, biggest = self.analyze_results(results, im, mode)
 
@@ -124,12 +124,12 @@ class YoloDetector(Node):
                 if area > biggest_bbox:
                     biggest_bbox = area
 
-                cv2.rectangle(output_image, (int(xyxy[0][1]),int(xyxy[0][3])), (int(xyxy[0][0]),int(xyxy[0][2])), (0,0,255), 2)
+                cv2.rectangle(output_image, (int(xyxy[0][0]),int(xyxy[0][1])), (int(xyxy[0][2]),int(xyxy[0][3])), (0,0,255), 2)
                 cv2.putText(output_image, (f"{mode}, {round(box.conf.item(), 2)}"), (int(xyxy[0][1]), int(xyxy[0][3]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
                     
 
-        self.detection_window_pub.publish(self.bridge.cv2_to_imgmsg(output_image), "bgr8")
+        self.detection_window_pub.publish(self.bridge.cv2_to_imgmsg(output_image, "bgr8"))
         return detected, int(biggest_bbox)
     
     def stopsign_ocr_check(self, sign_image):
