@@ -22,7 +22,7 @@ class YoloDetector(Node):
         self.reader = easyocr.Reader(["en"], gpu=True, verbose=False)
 
         # Declare parameters
-        self.declare_parameter("image_topic", "/routecam")
+        self.declare_parameter("image_topic", "/routecam/image_raw")
         self.declare_parameter("coco_model_path", "")
         self.declare_parameter("tire_model_path", "")
         self.declare_parameter('flip_image', False)
@@ -34,6 +34,9 @@ class YoloDetector(Node):
 
         # Subscribers
         self.create_subscription(ROSImage, self.get_parameter("image_topic").value, self.image_callback, 10)
+
+        # Publishers
+        self.detection_window_pub = self.create_publisher(ROSImage, "yolo_detection_window", 1)
 
         # Service
         self.create_service(DetectObject, 'detect_object', self.handle_detection_request)
@@ -91,35 +94,43 @@ class YoloDetector(Node):
         }
 
         results = yolo.predict(source=im, device="0", stream=False, verbose=False, conf=0.5, classes=[target_ids[mode]], show=True)
-        # results = yolo.predict(source=im, device="0", stream=False, conf=0.5, verbose=False, show=True)
 
-        count, biggest, _ = self.analyze_results(results, im, mode)
+        count, biggest = self.analyze_results(results, im, mode)
 
         torch.cuda.empty_cache()
         gc.collect()
         
         return count, biggest
 
-    def analyze_results(self, results, image, mode):
+    def analyze_results(self, results, image : cv2.Mat, mode):
         detected = 0
         biggest_bbox = 0
         image_size = image.shape[0] * image.shape[1]
-
+        output_image = image.copy()
+        
         for result in results:
             boxes = result.boxes.cpu().numpy()
             for box in boxes:
+                xyxy = box.xyxy
                 if mode == 'stop':
-                    xyxy = box.xyxy
-                    self.get_logger().info(f"{xyxy}")
                     sign_image = image[int(xyxy[0][1]):int(xyxy[0][3]), int(xyxy[0][0]):int(xyxy[0][2])]
                     if not self.stopsign_ocr_check(sign_image):
-                        continue # skip the detection
+                        cv2.line(output_image, (int(xyxy[0][1]),int(xyxy[0][3])), (int(xyxy[0][0]),int(xyxy[0][2])), (0,0,255), 2)
+                        cv2.putText(output_image, (f"Fake {mode}, {round(box.conf.item(), 2)}"), (int(xyxy[0][1]), int(xyxy[0][3]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                        continue
+
                 detected += 1
                 area = 100 * ((box.xywh[0][2] * box.xywh[0][3]) / image_size)
                 if area > biggest_bbox:
                     biggest_bbox = area
 
-        return detected, int(biggest_bbox * 100), results[0].plot()
+                cv2.rectangle(output_image, (int(xyxy[0][1]),int(xyxy[0][3])), (int(xyxy[0][0]),int(xyxy[0][2])), (0,0,255), 2)
+                cv2.putText(output_image, (f"{mode}, {round(box.conf.item(), 2)}"), (int(xyxy[0][1]), int(xyxy[0][3]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+                    
+
+        self.detection_window_pub.publish(self.bridge.cv2_to_imgmsg(output_image), "bgr8")
+        return detected, int(biggest_bbox)
     
     def stopsign_ocr_check(self, sign_image):
         stop_found = False
