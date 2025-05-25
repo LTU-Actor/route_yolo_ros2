@@ -63,14 +63,14 @@ class YoloDetector(Node):
     def handle_detection_request(self, request, response):
         if self.cam_image is None:
             self.get_logger().warn("No image received yet")
-            response.count = 0
-            response.size = 0
+            response.count = -1
+            response.size = 0.0
             return response
 
         if request.target not in ['stop', 'tire', 'person']:
             self.get_logger().warn(f"Unknown detection target: {request.target}")
             response.count = 0
-            response.size = 0
+            response.size = 0.0
             return response
 
         count, size = self.detect(request.target)
@@ -105,7 +105,7 @@ class YoloDetector(Node):
 
     def analyze_results(self, results, image : cv2.Mat, mode):
         detected = 0
-        biggest_bbox = 0
+        biggest_bbox = 0.0
         image_size = image.shape[0] * image.shape[1]
         output_image = image.copy()
         
@@ -131,7 +131,7 @@ class YoloDetector(Node):
                     
 
         self.detection_window_pub.publish(self.bridge.cv2_to_imgmsg(output_image, "bgr8"))
-        return detected, int(biggest_bbox)
+        return detected, biggest_bbox
     
     def stopsign_ocr_check(self, sign_image):
         stop_found = False
