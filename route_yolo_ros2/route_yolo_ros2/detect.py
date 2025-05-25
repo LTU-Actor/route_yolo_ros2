@@ -97,7 +97,7 @@ class YoloDetector(Node):
         results = yolo.predict(source=im, device="0", stream=False, verbose=False, conf=0.5, classes=[target_ids[mode]], show=False)
 
         count, biggest = self.analyze_results(results, im, mode)
-
+        self.cam_image = None
         torch.cuda.empty_cache()
         gc.collect()
         
@@ -116,8 +116,8 @@ class YoloDetector(Node):
                 if mode == 'stop':
                     sign_image = image[int(xyxy[0][1]):int(xyxy[0][3]), int(xyxy[0][0]):int(xyxy[0][2])]
                     if not self.stopsign_ocr_check(sign_image):
-                        cv2.line(output_image, (int(xyxy[0][1]),int(xyxy[0][3])), (int(xyxy[0][0]),int(xyxy[0][2])), (0,0,255), 2)
-                        cv2.putText(output_image, (f"Fake {mode}, {round(box.conf.item(), 2)}"), (int(xyxy[0][1]), int(xyxy[0][3]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                        cv2.line(output_image, (int(xyxy[0][0]),int(xyxy[0][1])), (int(xyxy[0][2]),int(xyxy[0][3])), (0,0,255), 3)
+                        cv2.putText(output_image, (f"Fake {mode}, {round(box.conf.item(), 2)}"), (int(xyxy[0][0]), int(xyxy[0][1]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
                         continue
 
                 detected += 1
@@ -126,7 +126,7 @@ class YoloDetector(Node):
                     biggest_bbox = area
 
                 cv2.rectangle(output_image, (int(xyxy[0][0]),int(xyxy[0][1])), (int(xyxy[0][2]),int(xyxy[0][3])), (0,0,255), 2)
-                cv2.putText(output_image, (f"{mode}, {round(box.conf.item(), 2)}"), (int(xyxy[0][1]), int(xyxy[0][3]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                cv2.putText(output_image, (f"{mode}, {round(box.conf.item(), 2)}"), (int(xyxy[0][0]), int(xyxy[0][1]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
                     
 
