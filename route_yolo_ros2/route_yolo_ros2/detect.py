@@ -71,14 +71,14 @@ class YoloDetector(Node):
     def handle_detection_request(self, request, response):
         if self.cam_image is None:
             self.get_logger().warn("No image received yet")
-            response.count = 0
-            response.size = 0
+            response.count = -1
+            response.size = 0.0
             return response
 
         if request.target not in ['stop', 'tire', 'person']:
             self.get_logger().warn(f"Unknown detection target: {request.target}")
             response.count = 0
-            response.size = 0
+            response.size = 0.0
             return response
 
         count, size = self.detect(request.target)
@@ -105,7 +105,7 @@ class YoloDetector(Node):
         results = yolo.predict(source=im, device="0", stream=False, verbose=False, conf=0.5, classes=[target_ids[mode]], show=False)
 
         count, biggest = self.analyze_results(results, im, mode)
-
+        self.cam_image = None
         torch.cuda.empty_cache()
         gc.collect()
         
@@ -113,7 +113,7 @@ class YoloDetector(Node):
 
     def analyze_results(self, results, image : cv2.Mat, mode):
         detected = 0
-        biggest_bbox = 0
+        biggest_bbox = 0.0
         image_size = image.shape[0] * image.shape[1]
         output_image = image.copy()
         
@@ -124,8 +124,8 @@ class YoloDetector(Node):
                 if mode == 'stop':
                     sign_image = image[int(xyxy[0][1]):int(xyxy[0][3]), int(xyxy[0][0]):int(xyxy[0][2])]
                     if not self.stopsign_ocr_check(sign_image):
-                        cv2.line(output_image, (int(xyxy[0][1]),int(xyxy[0][3])), (int(xyxy[0][0]),int(xyxy[0][2])), (0,0,255), 2)
-                        cv2.putText(output_image, (f"Fake {mode}, {round(box.conf.item(), 2)}"), (int(xyxy[0][1]), int(xyxy[0][3]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                        cv2.line(output_image, (int(xyxy[0][0]),int(xyxy[0][1])), (int(xyxy[0][2]),int(xyxy[0][3])), (0,0,255), 3)
+                        cv2.putText(output_image, (f"Fake {mode}, {round(box.conf.item(), 2)}"), (int(xyxy[0][0]), int(xyxy[0][1]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
                         continue
                 if mode == 'person':
                     person_image = image[int(xyxy[0][1]):int(xyxy[0][3]), int(xyxy[0][0]):int(xyxy[0][2])]
@@ -137,12 +137,12 @@ class YoloDetector(Node):
                     biggest_bbox = area
 
                 cv2.rectangle(output_image, (int(xyxy[0][0]),int(xyxy[0][1])), (int(xyxy[0][2]),int(xyxy[0][3])), (0,0,255), 2)
-                cv2.putText(output_image, (f"{mode}, {round(box.conf.item(), 2)}"), (int(xyxy[0][1]), int(xyxy[0][3]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                cv2.putText(output_image, (f"{mode}, {round(box.conf.item(), 2)}"), (int(xyxy[0][0]), int(xyxy[0][1]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
                     
 
         self.detection_window_pub.publish(self.bridge.cv2_to_imgmsg(output_image, "bgr8"))
-        return detected, int(biggest_bbox)
+        return detected, biggest_bbox
     
     def stopsign_ocr_check(self, sign_image):
         stop_found = False
