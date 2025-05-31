@@ -28,6 +28,13 @@ class YoloDetector(Node):
         self.declare_parameter('flip_image', False)
         self.declare_parameter('image_resize', 640)
 
+        self.declare_parameter("orange.hue_l", 20)
+        self.declare_parameter("orange.hue_h", 50)
+        self.declare_parameter("orange.sat_l", 200)
+        self.declare_parameter("orange.sat_h", 255)
+        self.declare_parameter("orange.val_l", 100)
+        self.declare_parameter("orange.val_h", 200)
+
         # Load YOLO model paths
         self.model_coco_path = self.get_parameter("coco_model_path").value
         self.model_tire_path = self.get_parameter("tire_model_path").value
@@ -37,6 +44,7 @@ class YoloDetector(Node):
 
         # Publishers
         self.detection_window_pub = self.create_publisher(ROSImage, "yolo_detection_window", 1)
+        self.vest_pub = self.create_publisher(ROSImage, "vest_mask", 1)
 
         # Service
         self.create_service(DetectObject, 'detect_object', self.handle_detection_request)
@@ -119,6 +127,9 @@ class YoloDetector(Node):
                         cv2.line(output_image, (int(xyxy[0][1]),int(xyxy[0][3])), (int(xyxy[0][0]),int(xyxy[0][2])), (0,0,255), 2)
                         cv2.putText(output_image, (f"Fake {mode}, {round(box.conf.item(), 2)}"), (int(xyxy[0][1]), int(xyxy[0][3]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
                         continue
+                if mode == 'person':
+                    person_image = image[int(xyxy[0][1]):int(xyxy[0][3]), int(xyxy[0][0]):int(xyxy[0][2])]
+                    self.orange_vest_mask(person_image)
 
                 detected += 1
                 area = 100 * ((box.xywh[0][2] * box.xywh[0][3]) / image_size)
@@ -144,6 +155,15 @@ class YoloDetector(Node):
                 break
         return stop_found
     
+    def orange_vest_mask(self, person_image):
+
+        tcol_lower = (self.get_parameter("orange.hue_l"), self.get_parameter("orange.sat_l"), self.get_parameter("orange.val_l"))
+        tcol_upper = (self.get_parameter("orange.hue_h"), self.get_parameter("orange.sat_h"), self.get_parameter("orange.val_h"))
+
+        hsv_image = cv2.cvtColor(person_image, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv_image, tcol_lower, tcol_upper)
+        mask_msg = self.bridge.cv2_to_imgmsg(mask, "mono8")
+        self.vest_pub.publish(mask_msg)
 
     def letterbox_resize(self, img, size=(640, 640)):
         h, w = img.shape[:2]
