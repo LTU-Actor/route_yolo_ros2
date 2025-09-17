@@ -28,8 +28,8 @@ class YoloDetector(Node):
         self.declare_parameter('flip_image', False)
         self.declare_parameter('image_resize', 640)
 
-        self.declare_parameter("orange.hue_l", 20)
-        self.declare_parameter("orange.hue_h", 50)
+        self.declare_parameter("orange.hue_l", 0)
+        self.declare_parameter("orange.hue_h", 15)
         self.declare_parameter("orange.sat_l", 200)
         self.declare_parameter("orange.sat_h", 255)
         self.declare_parameter("orange.val_l", 100)
@@ -128,7 +128,8 @@ class YoloDetector(Node):
                         cv2.putText(output_image, (f"Fake {mode}, {round(box.conf.item(), 2)}"), (int(xyxy[0][0]), int(xyxy[0][1]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
                         continue
                 if mode == 'person':
-                    person_image = image[int(xyxy[0][1]):int(xyxy[0][3]), int(xyxy[0][0]):int(xyxy[0][2])]
+                    # person_image = image[int(xyxy[0][1]):int(xyxy[0][3]), int(xyxy[0][0]):int(xyxy[0][2])]
+                    person_image = image
                     self.orange_vest_mask(person_image)
 
                 detected += 1
@@ -157,8 +158,8 @@ class YoloDetector(Node):
     
     def orange_vest_mask(self, person_image):
 
-        tcol_lower = (self.get_parameter("orange.hue_l"), self.get_parameter("orange.sat_l"), self.get_parameter("orange.val_l"))
-        tcol_upper = (self.get_parameter("orange.hue_h"), self.get_parameter("orange.sat_h"), self.get_parameter("orange.val_h"))
+        tcol_lower = (self.get_parameter("orange.hue_l").value, self.get_parameter("orange.sat_l").value, self.get_parameter("orange.val_l").value)
+        tcol_upper = (self.get_parameter("orange.hue_h").value, self.get_parameter("orange.sat_h").value, self.get_parameter("orange.val_h").value)
 
         hsv_image = cv2.cvtColor(person_image, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(hsv_image, tcol_lower, tcol_upper)
